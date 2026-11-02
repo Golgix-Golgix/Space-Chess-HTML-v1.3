@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Space Chess v1.3 — gioco strategico orbitale locale per due giocatori.">
+  <meta name="theme-color" content="#07101b">
+  <title>Space Chess v1.3</title>
+  <style>
+    :root{color-scheme:dark;--ink:#e9f6fa;--muted:#9cb4c2;--line:#294253;--accent:#79e0d4;--panel:#102332e8}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;min-height:100vh;color:var(--ink);font-family:Arial,Helvetica,sans-serif;background:#070e19}
+    button{font:inherit}
+    .app-shell{width:100%;min-height:100vh;min-height:100dvh;background:radial-gradient(circle at 49% 43%,#193948 0,#0b1b2a 45%,#070e19 100%);padding:clamp(14px,3vw,38px);position:relative;overflow:hidden}
+    .app-shell:before{content:"";position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(#b8efff77 1px,transparent 1px);background-size:67px 71px;opacity:.19}
+    .content{position:relative;max-width:1550px;margin:auto}
+    .eyebrow,.mono{font-family:"Courier New",monospace}
+    .eyebrow{letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-size:11px}
+    h1{font-size:clamp(40px,5vw,72px);font-weight:700;letter-spacing:-.055em;line-height:1.05;margin:.15em 0}
+    h2{font-size:21px;margin:0 0 8px}
+    p{margin-top:0}
+    .glass{background:var(--panel);border:1px solid #345269;border-radius:18px;box-shadow:0 18px 50px #0005}
+    .action{border:1px solid #527382;background:#173c48;color:#eafffb;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;transition:transform .2s,background .2s,border-color .2s}
+    .action:hover:not(:disabled){transform:translateY(-2px);background:#225967;border-color:#79e0d4}
+    .action:disabled{opacity:.4;cursor:not-allowed}
+    .action:focus-visible,.sq:focus-visible{outline:3px solid #fff58b;outline-offset:2px;z-index:4}
+    .flex{display:flex}.flex-wrap{flex-wrap:wrap}.grid{display:grid}.items-end{align-items:flex-end}.items-center{align-items:center}.justify-between{justify-content:space-between}.gap-2{gap:8px}.gap-3{gap:12px}.gap-5{gap:20px}.flex-1{flex:1 1 0}.w-full{width:100%}
+    .p-3{padding:12px}.p-4{padding:16px}.p-5{padding:20px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}.mt-5{margin-top:20px}.text-xs{font-size:12px;line-height:1.4}.text-sm{font-size:14px;line-height:1.45}.font-bold{font-weight:700}.leading-relaxed{line-height:1.65}
+    .stats-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+    .pill{border:1px solid #38566a;background:#112d3e;border-radius:12px;padding:10px 13px;min-width:0}
+    .stat-label{color:#a4bbc8;font-size:11px;text-transform:uppercase;letter-spacing:.1em}
+    .stat-value{font-weight:700;margin-top:4px;overflow-wrap:anywhere}
+    .planet-stat{display:flex;align-items:center;gap:8px}
+    .planet-icon{width:28px;height:28px;display:inline-grid;place-items:center;position:relative;flex:0 0 28px;font-size:20px;filter:drop-shadow(0 0 7px #79e0d4a0)}
+    .planet-icon:after{content:"";position:absolute;width:25px;height:10px;border:1px solid #9cebe4;border-radius:50%;transform:rotate(-27deg);box-shadow:0 0 6px #79e0d477}
+    .formula{color:#b0cbd1;min-height:17px}
+    .game-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,350px);gap:20px;align-items:start}
+    .board-panel{padding:clamp(12px,2vw,20px)}
+    .board-stage{position:relative;width:min(100%,690px);aspect-ratio:1/1;margin:auto;isolation:isolate}
+    .board{position:relative;z-index:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(12,minmax(0,1fr));gap:0;width:100%;height:100%;border:6px solid #386073;border-radius:13px;overflow:hidden;box-shadow:0 0 0 2px #76d5d361,0 0 75px #4dd5d32a;background:#172d3a}
+    .board-stage:after{content:"";position:absolute;z-index:2;pointer-events:none;inset:3%;border:2px solid transparent;border-top-color:#a7fff0;border-right-color:#79e0d4;border-radius:50%;opacity:0;filter:drop-shadow(0 0 8px #79e0d4)}
+    .board-stage.orbiting:after{animation:orbitSweep 1.15s cubic-bezier(.2,.65,.2,1) both}
+    .planet-icon.spin{animation:planetSpin 1.15s ease-in-out both}
+    @keyframes orbitSweep{0%{transform:rotate(0deg) scale(.88);opacity:0}16%{opacity:.95}78%{opacity:.75}100%{transform:rotate(360deg) scale(1.06);opacity:0}}
+    @keyframes planetSpin{0%{transform:rotate(0deg)}70%{transform:rotate(360deg)}100%{transform:rotate(360deg)}}
+    .sq{min-width:0;min-height:0;border:1px solid #ffffff19;display:flex;align-items:center;justify-content:center;position:relative;padding:0;cursor:pointer;color:#fff;overflow:hidden;border-radius:0}
+    .sq.crust{background:#3f8f68}.sq.mantle{background:#775038}.sq.outer{background:#514968}.sq.inner{background:#c68a4c}
+    .sq:nth-child(even){background-image:linear-gradient(#ffffff0a,#ffffff0a)}
+    .board.season-spring .sq.crust{background:#3f8f68}.board.season-summer .sq.crust{background:#c88732}.board.season-autumn .sq.crust{background:#a94f38}.board.season-winter .sq.crust{background:#39799b}
+    .board.night .sq.crust{filter:brightness(.62)}.board.season-summer.night .sq.crust{background:#79501f}.board.season-autumn.night .sq.crust{background:#673126}.board.season-winter.night .sq.crust{background:#244b62}
+    .sq.selected{box-shadow:inset 0 0 0 3px #fff397;background-color:#828050}
+    .sq.legal:after{content:"";position:absolute;width:24%;aspect-ratio:1;border-radius:50%;background:#c2ffb3;box-shadow:0 0 11px #b8ff9e;pointer-events:none}
+    .sq.capture:after{content:"";position:absolute;inset:5%;border:3px solid #ff897e;border-radius:9px;box-shadow:inset 0 0 12px #ff4e4980;pointer-events:none}
+    .sq.kamikaze:after{border-color:#ffe27c;box-shadow:inset 0 0 12px #ffe27c80,0 0 11px #ffe27c80}
+    .piece{position:relative;z-index:1;width:68%;height:68%;display:flex;align-items:center;justify-content:center;font-family:"Courier New",monospace;font-weight:700;font-size:clamp(8px,1.35vw,16px);box-shadow:0 3px 9px #0008,0 0 10px currentColor;pointer-events:none;clip-path:polygon(50% 0,90% 23%,90% 77%,50% 100%,10% 77%,10% 23%)}
+    .piece:before{content:"";position:absolute;inset:4px;border:1px solid currentColor;border-radius:50%;opacity:.55}.piece span{position:relative;z-index:1}
+    .piece.piece-opponent{filter:saturate(.65) brightness(.78);opacity:.84}.piece.piece-selected{filter:brightness(1.12);outline:2px solid #fff397;outline-offset:2px}
+    .p1{background:#b8f5e8;color:#073e43;border:1px solid #eaffff}.p2{background:#ffb884;color:#52250c;border:1px solid #fff0c9}
+    .piece.type-CM{box-shadow:0 3px 9px #0008,0 0 12px #fff397}.piece.type-MS{border-radius:12%}.piece.type-MR{transform:rotate(30deg)}.piece.type-MR span{transform:rotate(-30deg)}.piece.type-TG{border-radius:8px}.piece.type-LP{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}.piece.type-DR{border-radius:4px;transform:rotate(45deg)}.piece.type-DR span{transform:rotate(-45deg)}
+    .board-note{color:#b2cbd1;font-size:12px}
+    .side-column{display:flex;flex-direction:column;gap:20px}
+    .rule{padding:10px 0;border-bottom:1px solid #345269;line-height:1.45;color:#c4d5df;font-size:13px}.rule:last-child{border:0}.rule strong{color:#fff}
+    .log-item{padding:7px 0;border-bottom:1px solid #ffffff19;color:#c0d3dc;font-size:13px;line-height:1.4}
+    .modal{position:fixed;z-index:20;inset:0;background:#020b13e8;display:flex;align-items:center;justify-content:center;padding:18px}
+    .modal-card{width:min(100%,530px);max-height:90vh;max-height:90dvh;overflow:auto;background:#132c3b;border:1px solid #6a9a9b;border-radius:22px;padding:clamp(22px,4vw,38px);box-shadow:0 30px 100px #000b}
+    .hidden{display:none!important}
+    footer{color:#8fa9b6}
+    @media(max-width:1050px){.stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.game-grid{grid-template-columns:1fr}.side-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:600px){.app-shell{padding:12px}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.side-column{grid-template-columns:1fr}.board{border-width:3px}.piece{font-size:clamp(7px,2.2vw,12px)}.sq.capture:after{border-width:2px}.action{padding:9px 11px;font-size:13px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="content">
+    <header class="flex flex-wrap justify-between items-end gap-5 mb-6">
+      <div>
+        <p class="eyebrow mb-2">STRATEGIA ORBITALE · DUE GIOCATORI</p>
+        <h1>Space Chess<span style="color:#79e0d4">.</span> <span style="font-size:.23em;vertical-align:middle;letter-spacing:.08em;border:1px solid #426577;border-radius:999px;padding:.4em .65em;color:#9fc6d1;background:#112b3a">v1.3</span></h1>
+        <p class="mt-2" style="color:#abc5cf;font-size:14px">Conquista il pianeta. Proteggi il tuo Commander.</p>
+      </div>
+      <nav class="flex flex-wrap gap-2" aria-label="Comandi partita">
+        <button id="new" class="action" type="button">Nuova partita</button>
+        <button id="undo" class="action" type="button" disabled>Annulla mossa</button>
+        <button id="show-rules" class="action" type="button">Mostra regole</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="glass p-4 mb-5" aria-label="Stato della partita">
+        <div class="stats-grid">
+          <div class="pill"><div class="stat-label">Turno</div><div id="turn" class="stat-value" aria-live="polite"></div></div>
+          <div class="pill"><div class="stat-label">Mosse G1 / G2</div><div id="counts" class="stat-value mono"></div></div>
+          <div class="pill"><div class="stat-label">Fase</div><div id="phase" class="stat-value"></div></div>
+          <div class="pill"><div class="stat-label">Stagione</div><div id="season" class="stat-value"></div></div>
+          <div class="pill"><div class="stat-label">Rotazione planetaria</div><div class="planet-stat"><span class="planet-icon" aria-hidden="true">🪐</span><div id="rotation" class="stat-value mono"></div></div></div>
+          <div class="pill"><div class="stat-label">Calore Crosta</div><div id="heat" class="stat-value"></div></div>
+        </div>
+        <div id="formula" class="formula mono text-xs mt-3" aria-live="polite"></div>
+      </section>
+
+      <div class="game-grid">
+        <section class="glass board-panel" aria-label="Scacchiera">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <p class="eyebrow" style="margin:0">PIANETA / 12 × 12</p>
+            <span class="board-note">● G1 turchese &nbsp; ● G2 ambra</span>
+          </div>
+          <div id="board-stage" class="board-stage">
+            <div id="board" class="board" role="grid" aria-label="Scacchiera Space Chess"></div>
+          </div>
+          <div class="flex flex-wrap gap-2 items-center mt-4">
+            <button id="kamikaze" class="action hidden" type="button">Attiva Kamikaze</button>
+            <button id="cancel-kamikaze" class="action hidden" type="button">Annulla Kamikaze</button>
+            <p id="message" class="text-sm flex-1" style="color:#dcf8ec;margin:0" role="status" aria-live="polite">Seleziona un pezzo per vedere le mosse legali.</p>
+          </div>
+        </section>
+
+        <aside class="side-column">
+          <section id="rules-panel" class="glass p-5">
+            <h2>Regole rapide</h2>
+            <div class="rule"><strong>CM · Commander</strong><br>Un passo in qualsiasi direzione; non entra nei Nuclei e non può essere catturato direttamente.</div>
+            <div class="rule"><strong>MS · Magma Station</strong><br>Qualsiasi distanza in orizzontale o verticale, senza saltare pezzi; mai sulla Crosta.</div>
+            <div class="rule"><strong>MR · Magma Rover</strong><br>Esattamente due caselle ortogonali; salta la casella intermedia. Non subisce le penalità termiche della TG.</div>
+            <div class="rule"><strong>TG · Tether Patrol Guard</strong><br>Solo in avanti, fino a tre caselle, senza saltare. Sulla Crosta perde le prime |Calore| caselle; a ±3 resta ferma.</div>
+            <div class="rule"><strong>LP · Layer Patrol</strong><br>Attraversa il proprio strato in linea ortogonale libera; cambia di uno strato con un passo diagonale.</div>
+            <div class="rule"><strong>DR · Drill</strong><br>Un passo lungo il bordo, avanti o indietro, anche per catturare. A ±3 può svoltare in senso orario o entrare nel Mantello.</div>
+            <div class="rule"><strong>Kamikaze</strong><br>Una Drill sulla Crosta può raggiungere una casella ortogonalmente adiacente al Mantello, eliminando un nemico presente e poi autodistruggersi. Può anche lanciarsi su una casella vuota.</div>
+            <div class="rule"><strong>Orbita e clima</strong><br>Dopo una mossa per giocatore: rotazione oraria di 90°. I pezzi che erano nel Mantello compiono altri 90°. Giorno +1 / Notte −1; Primavera +1, Estate +2, Autunno −1, Inverno −2. La stagione cambia ogni quattro mosse per giocatore.</div>
+            <div class="rule"><strong>Interpretazioni di gioco</strong><br>La Drill segue i tratti rettilinei del bordo e normalmente non svolta agli angoli. Il Commander vince solo con lo scacco matto. Le mosse vengono controllate anche dopo l'eventuale rotazione.</div>
+          </section>
+          <section class="glass p-5" aria-label="Registro di bordo">
+            <h2>Registro di bordo</h2>
+            <ol id="log" class="mt-3" aria-live="polite" style="padding-left:20px;margin-bottom:0"></ol>
+          </section>
+        </aside>
+      </div>
+    </main>
+    <footer class="mt-5 text-xs">SPACE CHESS v1.3 / PROTOTIPO LOCALE A DUE GIOCATORI</footer>
+  </div>
+</div>
+
+<div id="tutorial" class="modal" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+  <div class="modal-card">
+    <p class="eyebrow mb-3">BENVENUTI A BORDO</p>
+    <h2 id="tutorial-title" style="font-size:30px;margin-bottom:16px">Come si gioca</h2>
+    <p class="leading-relaxed mb-4" style="font-size:14px">Giocate a turno sullo stesso schermo. Seleziona un tuo pezzo: le caselle illuminate sono le mosse consentite. Proteggi il Commander e metti quello avversario in scacco matto.</p>
+    <p class="leading-relaxed mb-6" style="font-size:14px">Dopo che entrambi avete mosso, il pianeta ruota. Tieni d'occhio Calore, stagioni e corrente del Mantello: la posizione può cambiare all'improvviso.</p>
+    <button id="start" class="action w-full" type="button">Inizia partita</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const N = 12;
+  const LAYER_NAMES = ['Crosta', 'Mantello', 'Nucleo esterno', 'Nucleo interno'];
+  const PIECE_NAMES = {
+    CM: 'Commander', MS: 'Magma Station', MR: 'Magma Rover',
+    TG: 'Tether Patrol Guard', LP: 'Layer Patrol', DR: 'Drill'
+  };
+  const SYMBOLS = {CM:'♛', MS:'✦', MR:'◆', TG:'✚', LP:'◇', DR:'✧'};
+  const HINTS = {
+    CM:'1 casella in ogni direzione; fuori dai Nuclei',
+    MS:'linea ortogonale libera; fuori dalla Crosta',
+    MR:'2 caselle ortogonali; salta la casella intermedia',
+    TG:'fino a 3 caselle in avanti; penalità termica sulla Crosta',
+    LP:'lungo il proprio strato; diagonale per cambiare strato',
+    DR:'1 casella sul bordo; abilità speciali a Calore ±3'
+  };
+  const SEASONS = ['Primavera', 'Estate', 'Autunno', 'Inverno'];
+  const SEASON_MODIFIERS = [1, 2, -1, -2];
+  const board = document.getElementById('board');
+  const cells = [];
+  const boardStage = document.getElementById('board-stage');
+  const planetIcon = document.querySelector('.planet-icon');
+  let state;
+  let selected = null;
+  let mode = 'normal';
+  let options = [];
+  let history = [];
+  let orbitTimer = null;
+
+  const inside = (r,c) => r >= 0 && r < N && c >= 0 && c < N;
+  const layer = (r,c) => {
+    const edgeDistance = Math.min(r, c, N - 1 - r, N - 1 - c);
+    if (edgeDistance === 0) return 0;
+    if (edgeDistance <= 2) return 1;
+    if (edgeDistance <= 4) return 2;
+    return 3;
+  };
+  const at = (pieces,r,c) => pieces.find(p => p.r === r && p.c === c);
+  const clone = value => JSON.parse(JSON.stringify(value));
+  const coord = (r,c) => String.fromCharCode(65 + c) + (r + 1);
+  const rotatePoint = (r,c) => [c, N - 1 - r];
+  const rotateVector = (dr,dc) => [dc, -dr];
+  const climate = s => {
+    const seasonIndex = Math.floor(Math.min(...s.counts) / 4) % 4;
+    const day = s.rotation % 2 === 0;
+    const heat = (day ? 1 : -1) + SEASON_MODIFIERS[seasonIndex];
+    return {seasonIndex, day, heat};
+  };
+
+  function setup() {
+    const layout = [
+      ['CM',0,0], ['MR',0,1], ['MR',1,0],
+      ['DR',0,2], ['DR',0,3], ['DR',2,0], ['DR',3,0],
+      ['LP',2,2], ['MS',1,3], ['MS',3,1],
+      ['TG',1,2], ['TG',2,1], ['TG',2,3]
+    ];
+    const pieces = [];
+    let id = 0;
+    for (let owner = 1; owner <= 2; owner++) {
+      for (const [type,r,c] of layout) {
+        pieces.push({
+          id: ++id, owner, type,
+          r: owner === 1 ? r : N - 1 - r,
+          c: owner === 1 ? c : N - 1 - c,
+          dr: owner === 1 ? 1 : -1,
+          dc: 0
+        });
+      }
+    }
+    state = {
+      pieces, turn: 1, counts: [0,0], rotation: 0,
+      logs: ['Partita iniziata: Giocatore 1 apre la partita.'],
+      winner: 0, draw: false, ended: false
+    };
+    history = [];
+    selected = null;
+    mode = 'normal';
+    options = [];
+    render();
+  }
+
+  function orbit(s) {
+    // L'elenco è acquisito prima della rotazione: soltanto i pezzi che si
+    // trovavano nel Mantello prima dell'orbita ricevono il secondo quarto di giro.
+    const mantleIds = new Set(s.pieces.filter(p => layer(p.r,p.c) === 1).map(p => p.id));
+    for (const p of s.pieces) {
+      [p.r,p.c] = rotatePoint(p.r,p.c);
+      [p.dr,p.dc] = rotateVector(p.dr,p.dc);
+      if (mantleIds.has(p.id)) {
+        [p.r,p.c] = rotatePoint(p.r,p.c);
+        [p.dr,p.dc] = rotateVector(p.dr,p.dc);
+      }
+    }
+    s.rotation++;
+    return mantleIds.size;
+  }
+
+  function rawMoves(piece,s,kamikaze = false) {
+    const out = [];
+    const pieces = s.pieces;
+    const heat = climate(s).heat;
+    function add(r,c,kind = 'move') {
+      if (!inside(r,c)) return false;
+      const target = at(pieces,r,c);
+      if (target?.owner === piece.owner || target?.type === 'CM') return false;
+      out.push({r,c,kind,capture:!!target});
+      return !target;
+    }
+
+    if (kamikaze) {
+      if (piece.type !== 'DR' || layer(piece.r,piece.c) !== 0) return out;
+      for (const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const r = piece.r + dr, c = piece.c + dc;
+        if (inside(r,c) && layer(r,c) === 1) add(r,c,'kamikaze');
+      }
+      return out;
+    }
+
+    if (piece.type === 'CM') {
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if ((dr || dc) && inside(piece.r + dr,piece.c + dc) && layer(piece.r + dr,piece.c + dc) < 2) {
+          add(piece.r + dr,piece.c + dc);
+        }
+      }
+    } else if (piece.type === 'MR') {
+      for (const [dr,dc] of [[2,0],[-2,0],[0,2],[0,-2]]) add(piece.r + dr,piece.c + dc);
+    } else if (piece.type === 'MS') {
+      for (const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        for (let n = 1; n < N; n++) {
+          const r = piece.r + dr * n, c = piece.c + dc * n;
+          if (!inside(r,c) || layer(r,c) === 0) break;
+          if (!add(r,c)) break;
+        }
+      }
+    } else if (piece.type === 'TG') {
+      const blind = layer(piece.r,piece.c) === 0 ? Math.abs(heat) : 0;
+      if (blind >= 3) return out;
+      for (let n = 1; n <= 3; n++) {
+        const r = piece.r + piece.dr * n, c = piece.c + piece.dc * n;
+        if (!inside(r,c) || at(pieces,r,c)) {
+          if (n > blind && inside(r,c)) add(r,c);
+          break;
+        }
+        if (n > blind) add(r,c);
+      }
+    } else if (piece.type === 'LP') {
+      for (const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        for (let n = 1; n < N; n++) {
+          const r = piece.r + dr * n, c = piece.c + dc * n;
+          if (!inside(r,c) || layer(r,c) !== layer(piece.r,piece.c)) break;
+          if (!add(r,c)) break;
+        }
+      }
+      for (const dr of [-1,1]) for (const dc of [-1,1]) {
+        const r = piece.r + dr, c = piece.c + dc;
+        if (inside(r,c) && Math.abs(layer(r,c) - layer(piece.r,piece.c)) === 1) add(r,c);
+      }
+    } else if (piece.type === 'DR') {
+      if (layer(piece.r,piece.c) === 0) {
+        // La Drill segue il lato rettilineo su cui si trova.
+        const directions = piece.r === 0 || piece.r === N - 1
+          ? [[0,1],[0,-1]] : [[1,0],[-1,0]];
+        for (const [dr,dc] of directions) {
+          const r = piece.r + dr, c = piece.c + dc;
+          if (inside(r,c) && layer(r,c) === 0) add(r,c);
+        }
+        if (Math.abs(heat) === 3) {
+          // Successore orario sul perimetro, inclusi i quattro angoli.
+          let clockwise;
+          if (piece.r === 0) clockwise = piece.c === N - 1 ? [1,0] : [0,1];
+          else if (piece.c === N - 1) clockwise = piece.r === N - 1 ? [0,-1] : [1,0];
+          else if (piece.r === N - 1) clockwise = piece.c === 0 ? [-1,0] : [0,-1];
+          else clockwise = [-1,0];
+          const r = piece.r + clockwise[0], c = piece.c + clockwise[1];
+          if (inside(r,c) && layer(r,c) === 0 && !out.some(m => m.r === r && m.c === c)) add(r,c);
+          for (const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+            const mr = piece.r + dr, mc = piece.c + dc;
+            if (inside(mr,mc) && layer(mr,mc) === 1) add(mr,mc);
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  function attacked(s,owner,r,c) {
+    // Rende temporaneamente catturabile il Commander bersaglio: il generatore
+    // delle mosse continua così a usare le stesse regole per gli attacchi.
+    const test = clone(s);
+    const victim = test.pieces.find(p => p.owner === owner && p.type === 'CM');
+    if (victim) { victim.r = r; victim.c = c; victim.type = 'MR'; }
+    return test.pieces.some(p => p.owner !== owner && rawMoves(p,test,false).some(m => m.r === r && m.c === c));
+  }
+
+  function inCheck(s,owner) {
+    const commander = s.pieces.find(p => p.owner === owner && p.type === 'CM');
+    return !commander || attacked(s,owner,commander.r,commander.c);
+  }
+
+  function apply(s,id,move) {
+    const piece = s.pieces.find(p => p.id === id);
+    if (!piece) throw new Error('Pezzo non trovato durante apply().');
+    const target = at(s.pieces,move.r,move.c);
+    if (target) s.pieces = s.pieces.filter(p => p.id !== target.id);
+    if (move.kind === 'kamikaze') s.pieces = s.pieces.filter(p => p.id !== id);
+    else { piece.r = move.r; piece.c = move.c; }
+    s.counts[s.turn - 1]++;
+    let swept = 0;
+    if (s.turn === 2) swept = orbit(s);
+    s.turn = s.turn === 1 ? 2 : 1;
+    return {target,swept};
+  }
+
+  function safeMoves(piece,s,kamikaze = false) {
+    return rawMoves(piece,s,kamikaze).filter(move => {
+      const test = clone(s);
+      apply(test,piece.id,move);
+      return !inCheck(test,piece.owner);
+    });
+  }
+
+  function hasReply(s,owner) {
+    return s.pieces.some(piece => piece.owner === owner && (
+      safeMoves(piece,s).length > 0 || (piece.type === 'DR' && safeMoves(piece,s,true).length > 0)
+    ));
+  }
+
+  function positionStatus(s,owner) {
+    const checked = inCheck(s,owner);
+    const replyExists = hasReply(s,owner);
+    if (checked && !replyExists) return 'checkmate';
+    if (!checked && !replyExists) return 'stalemate';
+    return checked ? 'check' : 'normal';
+  }
+
+  function describeInvalid(piece,r,c) {
+    if (!piece) return 'Selezione non valida: scegli di nuovo un pezzo.';
+    if (!inside(r,c)) return 'Casella fuori dalla scacchiera.';
+    const occupant = at(state.pieces,r,c);
+    if (occupant?.owner === piece.owner) return 'La casella è occupata da un tuo pezzo.';
+    if (occupant?.type === 'CM') return 'Il Commander non si cattura direttamente: devi ottenere scacco matto.';
+    const raw = rawMoves(piece,state,mode === 'kamikaze');
+    if (raw.some(m => m.r === r && m.c === c)) return 'Mossa non sicura: il tuo Commander sarebbe esposto dopo la mossa o la rotazione.';
+    if (piece.type === 'TG' && layer(piece.r,piece.c) === 0) return 'Guardia sulla Crosta: il Calore elimina le prime caselle; a ±3 non può muoversi.';
+    if (piece.type === 'MS' && layer(r,c) === 0) return 'La Magma Station non può entrare nella Crosta.';
+    if (piece.type === 'CM' && layer(r,c) >= 2) return 'Il Commander non può entrare nei Nuclei.';
+    if (mode === 'kamikaze') return 'Kamikaze richiede una casella del Mantello adiacente ortogonalmente alla Drill.';
+    return 'Mossa non consentita dal movimento del pezzo, dallo strato o da un ostacolo.';
+  }
+
+  function say(text) { document.getElementById('message').textContent = text; }
+
+  function choose(r,c) {
+    if (state.ended) {
+      say(state.draw ? 'La partita è patta. Premi Nuova partita per ricominciare.' : `La partita è conclusa: vince il Giocatore ${state.winner}. Premi Nuova partita per ricominciare.`);
+      return;
+    }
+    const piece = at(state.pieces,r,c);
+    if (selected !== null) {
+      const move = options.find(m => m.r === r && m.c === c);
+      if (move) { playMove(move); return; }
+      if (piece?.owner === state.turn) {
+        selected = piece.id; mode = 'normal'; render();
+        say(`${PIECE_NAMES[piece.type]}: scegli una casella illuminata.`); return;
+      }
+      say(describeInvalid(state.pieces.find(p => p.id === selected),r,c)); return;
+    }
+    if (piece?.owner === state.turn) {
+      selected = piece.id; mode = 'normal'; render();
+      say(`${PIECE_NAMES[piece.type]}: scegli una casella illuminata.`);
+    } else {
+      say(piece ? 'Non è il turno di questo giocatore.' : 'Seleziona prima un tuo pezzo.');
+    }
+  }
+
+  function triggerOrbitAnimation() {
+    boardStage.classList.remove('orbiting');
+    // Forza il riavvio dell'animazione anche quando due orbite sono ravvicinate.
+    void boardStage.offsetWidth;
+    boardStage.classList.add('orbiting');
+    planetIcon.classList.remove('spin');
+    void planetIcon.offsetWidth;
+    planetIcon.classList.add('spin');
+    if (orbitTimer) clearTimeout(orbitTimer);
+    orbitTimer = setTimeout(() => { boardStage.classList.remove('orbiting'); planetIcon.classList.remove('spin'); }, 1250);
+  }
+
+  function playMove(move) {
+    const piece = state.pieces.find(p => p.id === selected);
+    if (!piece) { selected = null; mode = 'normal'; render(); say('Selezione non valida: scegli di nuovo un pezzo.'); return; }
+    const from = coord(piece.r,piece.c);
+    const owner = state.turn;
+    const type = piece.type;
+    history.push(clone(state));
+    const result = apply(state,piece.id,move);
+    const event = `G${owner}: ${type} ${from} → ${coord(move.r,move.c)}${result.target ? ' · cattura ' + result.target.type : ''}${move.kind === 'kamikaze' ? ' · Kamikaze: Drill distrutta' : ''}.`;
+    state.logs.unshift(event);
+
+    if (owner === 2) {
+      state.logs.unshift(`Orbita: +90° orari; ${result.swept} pezzi del Mantello trascinati di altri 90°.`);
+      if (state.counts[0] > 0 && state.counts[0] % 4 === 0) {
+        state.logs.unshift(`Nuova stagione: ${SEASONS[climate(state).seasonIndex]}.`);
+      }
+    }
+
+    selected = null;
+    mode = 'normal';
+    const status = positionStatus(state,state.turn);
+
+    if (status === 'checkmate') {
+      state.winner = owner; state.ended = true;
+      state.logs.unshift(`SCACCO MATTO! Vince il Giocatore ${owner}.`);
+      say(`SCACCO MATTO — vince il Giocatore ${owner}.`);
+    } else if (status === 'stalemate') {
+      state.draw = true; state.ended = true;
+      state.logs.unshift('PATTA PER STALLO: il giocatore attivo non ha mosse legali.');
+      say('PATTA PER STALLO — nessuna mossa legale disponibile.');
+    } else if (status === 'check') {
+      state.logs.unshift(`Scacco al Commander del Giocatore ${state.turn}!`);
+      say(`Scacco al Giocatore ${state.turn}! Proteggi il Commander.`);
+    } else if (result.target) {
+      say(`Cattura di ${PIECE_NAMES[result.target.type]}. Ora tocca al Giocatore ${state.turn}.`);
+    } else if (move.kind === 'kamikaze') {
+      say(`Drill lanciata e distrutta. Tocca al Giocatore ${state.turn}.`);
+    } else {
+      say(`Mossa eseguita. Tocca al Giocatore ${state.turn}.`);
+    }
+
+    state.logs = state.logs.slice(0,250);
+    render();
+    if (owner === 2) triggerOrbitAnimation();
+  }
+
+  function render() {
+    const climateNow = climate(state);
+    const selectedPiece = state.pieces.find(p => p.id === selected);
+    options = selectedPiece ? safeMoves(selectedPiece,state,mode === 'kamikaze') : [];
+    board.classList.remove('season-spring','season-summer','season-autumn','season-winter','night');
+    board.classList.add(['season-spring','season-summer','season-autumn','season-winter'][climateNow.seasonIndex]);
+    if (!climateNow.day) board.classList.add('night');
+
+    document.getElementById('turn').textContent = state.winner ? `Vince G${state.winner}` : state.draw ? 'PATTA · STALLO' : `Giocatore ${state.turn}`;
+    document.getElementById('counts').textContent = state.counts.join(' / ');
+    document.getElementById('phase').textContent = climateNow.day ? '☀ Giorno' : '☾ Notte';
+    document.getElementById('season').textContent = SEASONS[climateNow.seasonIndex];
+    document.getElementById('rotation').textContent = `${state.rotation * 90}° · ${state.rotation} ${state.rotation === 1 ? 'orbita' : 'orbite'}`;
+    document.getElementById('heat').textContent = `${climateNow.heat > 0 ? '+' : ''}${climateNow.heat}${climateNow.heat === 3 ? ' · Torrido' : climateNow.heat === -3 ? ' · Gelido' : ''}`;
+    document.getElementById('formula').textContent = `${climateNow.day ? 'Giorno +1' : 'Notte −1'} + ${SEASONS[climateNow.seasonIndex]} ${SEASON_MODIFIERS[climateNow.seasonIndex] > 0 ? '+' : ''}${SEASON_MODIFIERS[climateNow.seasonIndex]} = ${climateNow.heat > 0 ? '+' : ''}${climateNow.heat} Calore`;
+
+    for (let i = 0; i < N * N; i++) {
+      const r = Math.floor(i / N), c = i % N;
+      const cell = cells[i];
+      const occupant = at(state.pieces,r,c);
+      const legal = options.find(m => m.r === r && m.c === c);
+      cell.classList.toggle('selected',!!selectedPiece && selectedPiece.r === r && selectedPiece.c === c);
+      cell.classList.toggle('legal',!!legal);
+      cell.classList.toggle('capture',!!legal?.capture);
+      cell.classList.toggle('kamikaze',legal?.kind === 'kamikaze');
+      cell.replaceChildren();
+      if (occupant) {
+        const badge = document.createElement('span');
+        badge.className = `piece p${occupant.owner} type-${occupant.type}${occupant.owner !== state.turn ? ' piece-opponent' : ''}${occupant.id === selected ? ' piece-selected' : ''}`;
+        const mark = document.createElement('span');
+        mark.textContent = `${SYMBOLS[occupant.type]} ${occupant.type}`;
+        badge.appendChild(mark); cell.appendChild(badge);
+      }
+      cell.title = `${coord(r,c)} · ${LAYER_NAMES[layer(r,c)]}${occupant ? ` · G${occupant.owner} ${PIECE_NAMES[occupant.type]}: ${HINTS[occupant.type]}` : ''}${legal ? ' · mossa legale' : ''}`;
+      cell.setAttribute('aria-label',cell.title);
+      cell.setAttribute('aria-selected',String(!!selectedPiece && selectedPiece.r === r && selectedPiece.c === c));
+    }
+
+    const log = document.getElementById('log');
+    log.replaceChildren();
+    state.logs.slice(0,7).forEach(entry => {
+      const item = document.createElement('li'); item.className = 'log-item'; item.textContent = entry; log.appendChild(item);
+    });
+    document.getElementById('undo').disabled = history.length === 0;
+    document.getElementById('kamikaze').classList.toggle('hidden',state.ended || !selectedPiece || selectedPiece.type !== 'DR' || layer(selectedPiece.r,selectedPiece.c) !== 0 || mode === 'kamikaze');
+    document.getElementById('cancel-kamikaze').classList.toggle('hidden',state.ended || mode !== 'kamikaze');
+  }
+
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'sq ' + ['crust','mantle','outer','inner'][layer(r,c)];
+    cell.setAttribute('role','gridcell');
+    cell.setAttribute('aria-rowindex',String(r + 1));
+    cell.setAttribute('aria-colindex',String(c + 1));
+    cell.tabIndex = r === 0 && c === 0 ? 0 : -1;
+    cell.addEventListener('click',() => {
+      cells.forEach((other,index) => other.tabIndex = index === r * N + c ? 0 : -1);
+      choose(r,c);
+    });
+    cell.addEventListener('keydown',event => {
+      const delta = {ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[event.key];
+      if (!delta) return;
+      const nr = r + delta[0], nc = c + delta[1];
+      if (inside(nr,nc)) {
+        event.preventDefault();
+        cells.forEach(other => { if (other.tabIndex === 0) other.tabIndex = -1; });
+        cells[nr * N + nc].tabIndex = 0;
+        cells[nr * N + nc].focus();
+      }
+    });
+    board.appendChild(cell); cells.push(cell);
+  }
+
+  document.getElementById('start').addEventListener('click',() => {
+    document.getElementById('tutorial').classList.add('hidden');
+    say('Seleziona un pezzo del Giocatore 1 per iniziare.');
+    cells[0].focus();
+  });
+  document.getElementById('show-rules').addEventListener('click',() => {
+    const panel = document.getElementById('rules-panel');
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    panel.style.boxShadow = '0 0 0 3px #79e0d4,0 18px 50px #0005';
+    setTimeout(() => panel.style.boxShadow = '',1800);
+  });
+  document.getElementById('new').addEventListener('click',() => {
+    if (orbitTimer) clearTimeout(orbitTimer);
+    boardStage.classList.remove('orbiting');
+    planetIcon.classList.remove('spin');
+    setup(); say('Nuova partita iniziata. Tocca al Giocatore 1.');
+  });
+  document.getElementById('undo').addEventListener('click',() => {
+    if (!history.length) return;
+    state = history.pop(); selected = null; mode = 'normal';
+    boardStage.classList.remove('orbiting');
+    planetIcon.classList.remove('spin');
+    render(); say('Ultima mossa annullata. Tocca al Giocatore ' + state.turn + '.');
+  });
+  document.getElementById('kamikaze').addEventListener('click',() => {
+    mode = 'kamikaze'; render();
+    say(options.length ? 'Kamikaze attiva: scegli una casella illuminata del Mantello.' : 'Nessuna destinazione Kamikaze sicura disponibile.');
+  });
+  document.getElementById('cancel-kamikaze').addEventListener('click',() => {
+    mode = 'normal'; render(); say('Kamikaze annullata: scegli una mossa normale.');
+  });
+
+  // Interfaccia di test disponibile soltanto aggiungendo ?test=1 all'URL.
+  // Non è necessaria durante una partita normale.
+  if (new URLSearchParams(location.search).has('test') || document.documentElement.dataset.test === '1') {
+    window.__SPACE_CHESS_TEST__ = {
+      snapshot: () => clone(state),
+      setState: next => {
+        state = Object.assign({winner:0,draw:false,ended:false,logs:[],turn:1,counts:[0,0],rotation:0,pieces:[]},clone(next));
+        selected = null; mode = 'normal'; history = []; render();
+      },
+      layer,
+      climate: () => clone(climate(state)),
+      rawMoves: (id,kamikaze=false) => { const p=state.pieces.find(x=>x.id===id); return p ? clone(rawMoves(p,state,kamikaze)) : []; },
+      safeMoves: (id,kamikaze=false) => { const p=state.pieces.find(x=>x.id===id); return p ? clone(safeMoves(p,state,kamikaze)) : []; },
+      inCheck: owner => inCheck(state,owner),
+      hasReply: owner => hasReply(state,owner),
+      positionStatus: owner => positionStatus(state,owner),
+      orbit: () => { const n=orbit(state); render(); return n; },
+      makeMove: (id,r,c,kamikaze=false) => {
+        const p=state.pieces.find(x=>x.id===id); if(!p) throw new Error('ID pezzo inesistente');
+        const m=safeMoves(p,state,kamikaze).find(x=>x.r===r&&x.c===c); if(!m) return false;
+        apply(state,id,m); render(); return true;
+      }
+    };
+  }
+
+  setup();
+  say('Seleziona un pezzo per vedere le mosse legali.');
+})();
+</script>
+</body>
+</html>
